@@ -1,3 +1,8 @@
+# Directories to ignore
 yliko/
 dev/
+data/
 
+# File types to ignore
+*.c
+*.swp
