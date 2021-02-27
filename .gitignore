@@ -6,3 +6,6 @@ data/
 # File types to ignore
 *.c
 *.swp
+
+# Executable
+main
