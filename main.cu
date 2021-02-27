@@ -16,11 +16,11 @@ void gaussianPass(int patchSize, int dataSize, float *gaussFilter,float *data){
 }
 /* Fill the matrix with the distances */
 __global__
-void distanceMatCalc(int totalPixels, int patchSize, float *distMat, float *data,float filtSig){
+void distanceMatCalc(long int totalPixels, int patchSize, float *distMat, float *data,float filtSig){
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	int stride = blockDim.x * gridDim.x;
 	
-	for (int i = index; i < totalPixels*totalPixels; i += stride){
+	for (long int i = index; i < totalPixels*totalPixels; i += stride){
 	     	int data_i = i / totalPixels;
 		int data_j = i % totalPixels;
 		float tmp = 0.0;
@@ -39,13 +39,13 @@ void distanceMatCalc(int totalPixels, int patchSize, float *distMat, float *data
 /* Find sum of rows for the distance matrix and divide each row element with it 
  * Put the max element of each row to the diagonal */
 __global__
-void distanceMatFinal(int totalPixels, float *distMat){
+void distanceMatFinal(long int totalPixels, float *distMat){
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	int stride = blockDim.x * gridDim.x;
-	for (int i = index; i < totalPixels; i += stride){
+	for (long int i = index; i < totalPixels; i += stride){
 		float sum = 0.0;
 		float max = 0.0;
-		for (int j = 0; j < totalPixels; j++){
+		for (long int j = 0; j < totalPixels; j++){
 			float element = distMat[i*totalPixels+j];
 			/* Check if data is max */
 			if(element>max) max = element;
@@ -54,7 +54,7 @@ void distanceMatFinal(int totalPixels, float *distMat){
 		}
 		sum += max;
 		/* Iterate row again, put max to diagonal and divide with sum */
-		for (int j = 0; j < totalPixels; j++){
+		for (long int j = 0; j < totalPixels; j++){
 			if (i == j ) distMat[i*totalPixels+j] = max/sum;
 			else distMat[i*totalPixels+j] /= sum;
 		}
@@ -62,12 +62,12 @@ void distanceMatFinal(int totalPixels, float *distMat){
 }
 /* Vector Matrix Multiplication */
 __global__
-void vectorMatrixMult(int totalPixels, float* matrix,float *vector, float *out){
+void vectorMatrixMult(long int totalPixels, float* matrix,float *vector, float *out){
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	int stride = blockDim.x * gridDim.x;
-	for (int i = index; i < totalPixels; i += stride){
+	for (long int i = index; i < totalPixels; i += stride){
 		float sum =0.0;
-		for (int j = 0; j < totalPixels; j++){
+		for (long int j = 0; j < totalPixels; j++){
 			sum += matrix[i*totalPixels+j]*vector[j];
 		}
 		out[i]=sum;
@@ -117,10 +117,10 @@ main(int argc, char *argv[]){
 	/* Find Distances matrix */
 	/* Allocate distance matrix */
 	float *kernel_distMat;
-	int totalPixels =  rawImgSize_i*rawImgSize_j;
+	long int totalPixels =  rawImgSize_i*rawImgSize_j;
 		/*CUDA code */
-		cudaMalloc(&kernel_distMat,totalPixels*totalPixels*sizeof(float));
-		distanceMatCalc<<<(totalPixels*totalPixels+255)/256,256>>>(totalPixels,patchSize,kernel_distMat,kernel_data,filtSig);
+		cudaMalloc(&kernel_distMat,(long int)totalPixels*totalPixels*sizeof(float));
+		distanceMatCalc<<<(long int)(totalPixels*totalPixels+255)/256,256>>>(totalPixels,patchSize,kernel_distMat,kernel_data,filtSig);
 	/* Find sum of rows for the distance matrix and divide each row element with it 
 	 * Put the max element of each row to the diagonal */
 		distanceMatFinal<<<(totalPixels+255)/256,256>>>(totalPixels,kernel_distMat);
