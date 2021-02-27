@@ -113,17 +113,17 @@ main(int argc, char *argv[]){
 		cudaMalloc(&kernel_data, totalData*sizeof(float));
 		cudaMemcpy(kernel_gFilter,gFilter,patchSize*patchSize*sizeof(float),cudaMemcpyHostToDevice);
 		cudaMemcpy(kernel_data,patchImg,totalData*sizeof(float),cudaMemcpyHostToDevice);	
-		gaussianPass<<<(totalData+255)/256,256>>>(patchSize,totalData,kernel_gFilter,kernel_data);
+		gaussianPass<<<(totalData+1023)/1024,1024>>>(patchSize,totalData,kernel_gFilter,kernel_data);
 	/* Find Distances matrix */
 	/* Allocate distance matrix */
 	float *kernel_distMat;
 	long int totalPixels =  rawImgSize_i*rawImgSize_j;
 		/*CUDA code */
 		cudaMalloc(&kernel_distMat,(long int)totalPixels*totalPixels*sizeof(float));
-		distanceMatCalc<<<(long int)(totalPixels*totalPixels+255)/256,256>>>(totalPixels,patchSize,kernel_distMat,kernel_data,filtSig);
+		distanceMatCalc<<<(long int)(totalPixels*totalPixels+1023)/1024,1024>>>(totalPixels,patchSize,kernel_distMat,kernel_data,filtSig);
 	/* Find sum of rows for the distance matrix and divide each row element with it 
 	 * Put the max element of each row to the diagonal */
-		distanceMatFinal<<<(totalPixels+255)/256,256>>>(totalPixels,kernel_distMat);
+		distanceMatFinal<<<(totalPixels+1023)/1024,1024>>>(totalPixels,kernel_distMat);
 	/*Allocate memory for filtered output */
 	float *filteredimage = (float *)malloc(totalPixels*sizeof(float));
 	float *kernel_filteredimage;
@@ -132,7 +132,7 @@ main(int argc, char *argv[]){
 		cudaMalloc( &kernel_filteredimage,totalPixels*sizeof(float));
 		cudaMemcpy(kernel_rawimage,rawimage,totalPixels*sizeof(float),cudaMemcpyHostToDevice);
 
-		vectorMatrixMult<<<(totalPixels+255)/256,256>>>(totalPixels,kernel_distMat,kernel_rawimage,kernel_filteredimage);
+		vectorMatrixMult<<<(totalPixels+1023)/1024,1024>>>(totalPixels,kernel_distMat,kernel_rawimage,kernel_filteredimage);
 
 		cudaMemcpy(filteredimage,kernel_filteredimage,totalPixels*sizeof(float),cudaMemcpyDeviceToHost);
 
