@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <cuda.h>
-#include <float.h>
+#include <sys/time.h>
 #include "inc/gaussian.h"
 #include "inc/iofun.h"
 #include "inc/imgfun.h"
 
+/* CUDA Kernels */
 /* Multiply each row of the unrolled data with the gauss filter using grid-stride*/
 __global__
 void gaussianPass(int patchSize, int dataSize, float *gaussFilter,float *data){
@@ -46,10 +46,11 @@ void distanceMatFinal(int totalPixels, float *distMat){
 		float sum = 0.0;
 		float max = 0.0;
 		for (int j = 0; j < totalPixels; j++){
+			float element = distMat[i*totalPixels+j];
 			/* Check if data is max */
-			if(distMat[i*totalPixels+j]>max) max = distMat[i*totalPixels+j];
+			if(element>max) max = element;
 			/* Add to sum to divide with it */
-			sum += distMat[i*totalPixels+j];
+			sum += element;
 		}
 		sum += max;
 		/* Iterate row again, put max to diagonal and divide with sum */
@@ -76,6 +77,9 @@ void vectorMatrixMult(int totalPixels, float* matrix,float *vector, float *out){
 /* for each distance matrix row find max and divide  */
 int
 main(int argc, char *argv[]){
+	/* Start Timing*/
+	struct timeval startTime,endTime;
+	gettimeofday(&startTime,NULL);
 	float patchSig = 5.0/3.0;
 	float filtSig = 0.02;
 	/* Check arguments if correct*/
@@ -98,7 +102,8 @@ main(int argc, char *argv[]){
 	patchImg = unrollPatches(paddedImg,rawImgSize_i,rawImgSize_j,patchSize);
 	/* Calculate the gaussian Filter */
 	float *gFilter = gaussFilter(patchSize,patchSig);
-	gaussNorm(gFilter,patchSize);
+	//gaussNorm(gFilter,patchSize);
+	
 	/* Multiply gaussian filter with data */
 	/* Memory for Kernel */
 	float *kernel_gFilter, *kernel_data;
@@ -109,7 +114,6 @@ main(int argc, char *argv[]){
 		cudaMemcpy(kernel_gFilter,gFilter,patchSize*patchSize*sizeof(float),cudaMemcpyHostToDevice);
 		cudaMemcpy(kernel_data,patchImg,totalData*sizeof(float),cudaMemcpyHostToDevice);	
 		gaussianPass<<<(totalData+255)/256,256>>>(patchSize,totalData,kernel_gFilter,kernel_data);
-		cudaFree(kernel_gFilter);
 	/* Find Distances matrix */
 	/* Allocate distance matrix */
 	float *kernel_distMat;
@@ -117,15 +121,9 @@ main(int argc, char *argv[]){
 		/*CUDA code */
 		cudaMalloc(&kernel_distMat,totalPixels*totalPixels*sizeof(float));
 		distanceMatCalc<<<(totalPixels*totalPixels+255)/256,256>>>(totalPixels,patchSize,kernel_distMat,kernel_data,filtSig);
-		/* TESTING 1,2,3 */
-		float *data=(float *)malloc(totalData*sizeof(float));
-		cudaMemcpy(data,kernel_data,totalData*sizeof(float),cudaMemcpyDeviceToHost);
-		cudaFree(kernel_data);
 	/* Find sum of rows for the distance matrix and divide each row element with it 
 	 * Put the max element of each row to the diagonal */
 		distanceMatFinal<<<(totalPixels+255)/256,256>>>(totalPixels,kernel_distMat);
-		float *tempmat = (float *)malloc(totalPixels*totalPixels*sizeof(float));
-		cudaMemcpy(tempmat,kernel_distMat,totalPixels*totalPixels*sizeof(float),cudaMemcpyDeviceToHost);
 	/*Allocate memory for filtered output */
 	float *filteredimage = (float *)malloc(totalPixels*sizeof(float));
 	float *kernel_filteredimage;
@@ -133,19 +131,22 @@ main(int argc, char *argv[]){
 		cudaMalloc( &kernel_rawimage,totalPixels*sizeof(float));
 		cudaMalloc( &kernel_filteredimage,totalPixels*sizeof(float));
 		cudaMemcpy(kernel_rawimage,rawimage,totalPixels*sizeof(float),cudaMemcpyHostToDevice);
+
 		vectorMatrixMult<<<(totalPixels+255)/256,256>>>(totalPixels,kernel_distMat,kernel_rawimage,kernel_filteredimage);
+
+		cudaMemcpy(filteredimage,kernel_filteredimage,totalPixels*sizeof(float),cudaMemcpyDeviceToHost);
+
+		/* Cuda Freeing memory */
+		cudaFree(kernel_gFilter);
+		cudaFree(kernel_data);
 		cudaFree(kernel_distMat);
 		cudaFree(kernel_rawimage);
-		cudaMemcpy(filteredimage,kernel_filteredimage,totalPixels*sizeof(float),cudaMemcpyDeviceToHost);
 		cudaFree(kernel_filteredimage);
+	/* End Timer*/
+	gettimeofday(&endTime,NULL);
 
 	/* Write image */
-	//writeImg(argv[1],data,rawImgSize_i*rawImgSize_j,patchSize*patchSize);
-	//writeImg(argv[1],patchImg,rawImgSize_i*rawImgSize_j,patchSize*patchSize);
-	//writeImg(argv[1],paddedImg,padImgSize_i,padImgSize_j);
-	//writeImg(argv[1],tempmat,totalPixels,totalPixels);
 	writeImg(argv[1],filteredimage,rawImgSize_i,rawImgSize_j);
-	//writeImg(argv[1],rawimage,rawImgSize_i,rawImgSize_j);
 
 	/* Free */ 
 	free(patchImg);
@@ -153,5 +154,9 @@ main(int argc, char *argv[]){
 	free(filteredimage);
 	free(gFilter);
 	free(paddedImg);
+
+	double timeInterval = (endTime.tv_sec * 1000000 + endTime.tv_usec) -
+		(startTime.tv_sec * 1000000 + startTime.tv_usec);
+	printf("Execution Time : %.2f us",timeInterval);
 
 }

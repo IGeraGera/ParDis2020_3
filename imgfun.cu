@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <float.h>
 /* Function that normalizes the image */
 void
 normalizeImage(float *image,int Size_i,int Size_j){
