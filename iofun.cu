@@ -69,12 +69,12 @@ void checkPatchSize(int patchSize){
 int
 getAttributes(FILE *fp){
 	/* Variables */
-	char buf[2048];
+	char buf[8192];
 	int attributes=0;
 	char delim=',';
 	/* Get first line from file */
 	/* and check if file is empty */
-	if (fgets(buf,2048,fp)==NULL){
+	if (fgets(buf,8192,fp)==NULL){
 		fprintf(stderr,"Line %d: Input file empty\n",__LINE__ );
 		exit(EXIT_FAILURE);
 	}
@@ -95,9 +95,9 @@ readCSV(FILE *fp, float **data, int *dataRows,int *attributes){
 	*attributes = getAttributes(fp);
 	const char delim[] = ",";
 	int row=0;
-	char buf[2048];
+	char buf[8192];
 	/* Read Lines one by one and split them on the delimiter */
-	while(fgets(buf,2048,fp)){
+	while(fgets(buf,8192,fp)){
 		/* realloc the data array to fill another row */
 		data = (float **)realloc(data,(row+1)*sizeof(float *));
 		data[row] = (float *)malloc(*attributes*(sizeof(float)));
