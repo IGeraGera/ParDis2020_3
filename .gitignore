@@ -2,6 +2,7 @@
 yliko/
 dev/
 data/
+report/
 
 # File types to ignore
 *.c
