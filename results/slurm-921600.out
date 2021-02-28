@@ -1,0 +1,35 @@
+rm -f main
+rm -f mainMemoryLimit
+nvcc mainMemoryLimit.cu iofun.cu imgfun.cu gaussian.cu -o mainMemoryLimit
+
+Starting...
+
+64  3x3
+
+Execution Time : 663157.00 us
+64 5x5
+
+Execution Time : 725217.00 us
+64 7x7
+
+Execution Time : 745652.00 us
+128  3x3
+
+Execution Time : 922048.00 us
+128 5x5
+
+Execution Time : 1280461.00 us
+128 7x7
+
+Execution Time : 1748032.00 us
+256  3x3
+
+Execution Time : 4309121.00 us
+256 5x5
+
+Execution Time : 9367690.00 us
+256 7x7
+
+Execution Time : 19986934.00 us
+
+128 warp

@@ -7,7 +7,7 @@ main:
 mainMemoryLimit:
 	$(CC) mainMemoryLimit.cu iofun.cu imgfun.cu gaussian.cu -o mainMemoryLimit
 test:
-	./main image64.csv 3
+	./main datasets/image64.csv 3
 
 clean:
 	-rm -f main
